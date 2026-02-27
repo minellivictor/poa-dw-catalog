@@ -53,5 +53,3 @@ Esta aplicação:
 - ruff
 
 ---
-
-## 📁 Estrutura Esperada
