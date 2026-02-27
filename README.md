@@ -18,6 +18,7 @@ O objetivo é oferecer um "Atlan-lite" interno, permitindo que servidores e equi
 
 ---
 
+
 ## Objetivo do Projeto
 
 Construir um catálogo de metadados do DW que:
@@ -53,3 +54,29 @@ Esta aplicação:
 - ruff
 
 ---
+
+# Estrutura Esperada
+
+src/
+main.py        # FastAPI app
+sync.py        # Sincronização de metadados do DW
+models.py      # Modelos SQLAlchemy
+database.py    # Configuração do SQLite
+templates/
+index.html
+search.html
+table.html
+tests/
+requirements.txt
+.env.example
+AGENTS.md
+
+---
+
+## Setup Local
+
+### 1. Criar ambiente virtual
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
