@@ -10,6 +10,8 @@ Disponibilizar uma interface simples para busca de tabelas e colunas nos schemas
 - silver
 - gold
 
+O filtro de camada é opcional: por padrão, a busca considera todas as camadas (bronze/silver/gold).
+
 A aplicação trabalha apenas com metadados (sem leitura de dados sensíveis).
 
 ## Stack

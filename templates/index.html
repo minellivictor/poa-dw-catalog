@@ -29,20 +29,46 @@
       margin-bottom: 1rem;
       font-size: 2rem;
     }
-    input[type="search"] {
+    form {
+      display: grid;
+      gap: 0.75rem;
+    }
+    input[type="search"], select {
       width: 100%;
       padding: 0.8rem;
       font-size: 1rem;
       border: 1px solid #d1d5db;
       border-radius: 8px;
+      background: #fff;
+    }
+    button {
+      justify-self: start;
+      padding: 0.65rem 1rem;
+      border: 0;
+      border-radius: 8px;
+      background: #111827;
+      color: #fff;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <main>
     <h1>POA DW Catalog</h1>
-    <form action="#" method="get">
-      <input type="search" name="q" placeholder="Buscar tabela ou coluna" aria-label="Buscar tabela ou coluna">
+    <form action="/search" method="get">
+      <input type="search" name="q" placeholder="Buscar tabela ou coluna" aria-label="Buscar tabela ou coluna" required>
+      <select name="layer" aria-label="Filtrar camada">
+        <option value="all" selected>Todas</option>
+        <option value="bronze">bronze</option>
+        <option value="silver">silver</option>
+        <option value="gold">gold</option>
+      </select>
+      <select name="scope" aria-label="Escopo">
+        <option value="all">Tudo</option>
+        <option value="tables">Apenas tabelas</option>
+        <option value="columns">Apenas colunas</option>
+      </select>
+      <button type="submit">Buscar</button>
     </form>
   </main>
 </body>

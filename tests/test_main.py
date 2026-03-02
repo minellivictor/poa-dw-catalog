@@ -1,30 +1,99 @@
 from pathlib import Path
 import sys
 
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import sessionmaker
+from starlette.requests import Request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.database import DB_PATH, engine, init_db
-from src.main import app
+import src.database as database
+from src.main import app, search
+from src.seed import seed_metadata
+
+
+def _configure_test_db(tmp_path, monkeypatch):
+    test_db_path = tmp_path / "catalog_test.db"
+    test_engine = create_engine(
+        f"sqlite:///{test_db_path}",
+        connect_args={"check_same_thread": False},
+    )
+    test_session_local = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+    monkeypatch.setattr(database, "DB_PATH", test_db_path)
+    monkeypatch.setattr(database, "DATABASE_URL", f"sqlite:///{test_db_path}")
+    monkeypatch.setattr(database, "engine", test_engine)
+    monkeypatch.setattr(database, "SessionLocal", test_session_local)
+
+    return test_db_path, test_engine
 
 
 def test_index_route_registered() -> None:
     paths = {route.path for route in app.routes}
     assert "/" in paths
+    assert "/search" in paths
 
 
-def test_init_db_creates_catalog_file() -> None:
-    if DB_PATH.exists():
-        DB_PATH.unlink()
+def test_init_db_creates_catalog_file(tmp_path, monkeypatch) -> None:
+    db_path, _ = _configure_test_db(tmp_path, monkeypatch)
 
-    init_db()
+    database.init_db()
 
-    assert DB_PATH.exists()
+    assert db_path.exists()
 
 
-def test_init_db_creates_catalog_table() -> None:
-    init_db()
-    inspector = inspect(engine)
+def test_init_db_creates_catalog_table(tmp_path, monkeypatch) -> None:
+    _, test_engine = _configure_test_db(tmp_path, monkeypatch)
+
+    database.init_db()
+    inspector = inspect(test_engine)
 
     assert "catalog_table" in inspector.get_table_names()
+
+
+def test_search_with_layer_all_returns_multiple_layers(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+    seed_metadata()
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/search",
+            "headers": [],
+            "query_string": b"",
+        }
+    )
+    with database.SessionLocal() as db:
+        response = search(request=request, q="cliente", scope="all", layer="all", db=db)
+
+    assert response.status_code == 200
+    html = response.body.decode("utf-8")
+    assert "Resultados da busca" in html
+    assert "bronze.raw_cliente" in html
+    assert "silver.dim_cliente" in html
+    assert "gold.fato_pedido.cliente_sk" in html
+
+
+def test_search_with_specific_layer_filters_results(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+    seed_metadata()
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/search",
+            "headers": [],
+            "query_string": b"",
+        }
+    )
+    with database.SessionLocal() as db:
+        response = search(request=request, q="cliente", scope="all", layer="silver", db=db)
+
+    assert response.status_code == 200
+    html = response.body.decode("utf-8")
+    assert "silver.dim_cliente" in html
+    assert "silver.dim_cliente.nome_cliente" in html
+    assert "bronze.raw_cliente" not in html
+    assert "gold.fato_pedido.cliente_sk" not in html

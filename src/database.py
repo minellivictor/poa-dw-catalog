@@ -1,7 +1,8 @@
+from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,3 +20,11 @@ def init_db() -> None:
     from src.models import Base
 
     Base.metadata.create_all(bind=engine)
+
+
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
