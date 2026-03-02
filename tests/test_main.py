@@ -73,6 +73,10 @@ def test_search_with_layer_all_returns_multiple_layers(tmp_path, monkeypatch) ->
     assert "bronze.raw_cliente" in html
     assert "silver.dim_cliente" in html
     assert "gold.fato_pedido.cliente_sk" in html
+    table_layers = {table.resolved_layer for table in response.context["table_results"]}
+    column_layers = {column.resolved_layer for column in response.context["column_results"]}
+    assert {"bronze", "silver"}.issubset(table_layers)
+    assert "gold" in column_layers
 
 
 def test_search_with_specific_layer_filters_results(tmp_path, monkeypatch) -> None:
@@ -97,3 +101,9 @@ def test_search_with_specific_layer_filters_results(tmp_path, monkeypatch) -> No
     assert "silver.dim_cliente.nome_cliente" in html
     assert "bronze.raw_cliente" not in html
     assert "gold.fato_pedido.cliente_sk" not in html
+    assert all(
+        table.resolved_layer == "silver" for table in response.context["table_results"]
+    )
+    assert all(
+        column.resolved_layer == "silver" for column in response.context["column_results"]
+    )

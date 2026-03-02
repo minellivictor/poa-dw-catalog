@@ -66,9 +66,40 @@
       color: #1d4ed8;
       text-decoration: none;
     }
+    .badge {
+      display: inline-block;
+      padding: 0.35em 0.65em;
+      font-size: 0.75em;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      border-radius: 999px;
+      vertical-align: baseline;
+      margin-left: 0.35rem;
+    }
+    .bg-secondary {
+      background-color: #6c757d;
+      color: #fff;
+    }
+    .text-bg-warning {
+      background-color: #ffc107;
+      color: #000;
+    }
+    .text-bg-dark {
+      background-color: #212529;
+      color: #fff;
+    }
+    .bg-light {
+      background-color: #f8f9fa;
+    }
+    .text-dark {
+      color: #212529;
+    }
   </style>
 </head>
 <body>
+  {% from "_layer_badge.html" import layer_badge %}
   <main>
     <a class="back" href="/">&larr; Nova busca</a>
     <h1>Resultados da busca</h1>
@@ -102,6 +133,7 @@
         {% for table in table_results %}
         <li>
           <strong>{{ table.dw_schema }}.{{ table.dw_table }}</strong>
+          {{ layer_badge(table.resolved_layer) }}
           {% if table.table_comment %}- {{ table.table_comment }}{% endif %}
         </li>
         {% endfor %}
@@ -118,6 +150,7 @@
         {% for column in column_results %}
         <li>
           <strong>{{ column.table.dw_schema }}.{{ column.table.dw_table }}.{{ column.column_name }}</strong>
+          {{ layer_badge(column.resolved_layer) }}
           ({{ column.data_type }})
           {% if column.column_comment %}- {{ column.column_comment }}{% endif %}
         </li>

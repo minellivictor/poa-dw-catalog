@@ -1,0 +1,17 @@
+{% macro layer_css_class(layer) -%}
+  {% set normalized = (layer or "")|lower %}
+  {% if normalized == "bronze" -%}
+    text-bg-warning
+  {% elif normalized == "silver" -%}
+    bg-secondary
+  {% elif normalized == "gold" -%}
+    text-bg-dark
+  {% else -%}
+    bg-light text-dark
+  {% endif %}
+{%- endmacro %}
+
+{% macro layer_badge(layer) -%}
+  {% set normalized = (layer or "unknown")|upper %}
+  <span class="badge {{ layer_css_class(layer)|trim }}">{{ normalized }}</span>
+{%- endmacro %}

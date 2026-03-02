@@ -25,6 +25,24 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="POA DW Catalog", lifespan=lifespan)
 
 
+def _resolve_table_layer(table: CatalogTable) -> str:
+    layer_value = (table.layer or table.dw_schema or "").strip().lower()
+    if layer_value in {"bronze", "silver", "gold"}:
+        return layer_value
+    return "unknown"
+
+
+def _annotate_result_layers(
+    table_results: list[CatalogTable], column_results: list[CatalogColumn]
+) -> None:
+    for table in table_results:
+        table.resolved_layer = _resolve_table_layer(table)
+    for column in column_results:
+        resolved_layer = _resolve_table_layer(column.table)
+        column.table.resolved_layer = resolved_layer
+        column.resolved_layer = resolved_layer
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request=request, name="index.html", context={})
@@ -85,6 +103,8 @@ def search(
                 )
                 .all()
             )
+
+    _annotate_result_layers(table_results, column_results)
 
     context = {
         "query": query,

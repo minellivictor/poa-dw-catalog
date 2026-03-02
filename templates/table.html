@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhe da Tabela | POA DW Catalog</title>
+  <style>
+    :root {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: #111827;
+      background-color: #f3f4f6;
+    }
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      display: grid;
+      place-items: start center;
+    }
+    main {
+      width: min(900px, 96vw);
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.35em 0.65em;
+      font-size: 0.75em;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+      border-radius: 999px;
+      vertical-align: baseline;
+      margin-left: 0.35rem;
+    }
+    .bg-secondary {
+      background-color: #6c757d;
+      color: #fff;
+    }
+    .text-bg-warning {
+      background-color: #ffc107;
+      color: #000;
+    }
+    .text-bg-dark {
+      background-color: #212529;
+      color: #fff;
+    }
+    .bg-light {
+      background-color: #f8f9fa;
+    }
+    .text-dark {
+      color: #212529;
+    }
+  </style>
+</head>
+<body>
+  {% from "_layer_badge.html" import layer_badge %}
+  <main>
+    <h1>
+      {{ table.dw_schema }}.{{ table.dw_table }}
+      {{ layer_badge(table.resolved_layer if table.resolved_layer is defined else table.layer or table.dw_schema) }}
+    </h1>
+  </main>
+</body>
+</html>
