@@ -8,8 +8,22 @@ from starlette.requests import Request
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import src.database as database
-from src.main import app, search
+from src.main import app, search, table_detail
 from src.seed import seed_metadata
+
+
+def _make_request(path: str) -> Request:
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": path,
+            "headers": [],
+            "query_string": b"",
+            "router": app.router,
+            "app": app,
+        }
+    )
 
 
 def _configure_test_db(tmp_path, monkeypatch):
@@ -32,6 +46,7 @@ def test_index_route_registered() -> None:
     paths = {route.path for route in app.routes}
     assert "/" in paths
     assert "/search" in paths
+    assert "/table" in paths
 
 
 def test_init_db_creates_catalog_file(tmp_path, monkeypatch) -> None:
@@ -55,21 +70,13 @@ def test_search_with_layer_all_returns_multiple_layers(tmp_path, monkeypatch) ->
     _configure_test_db(tmp_path, monkeypatch)
     seed_metadata()
 
-    request = Request(
-        {
-            "type": "http",
-            "method": "GET",
-            "path": "/search",
-            "headers": [],
-            "query_string": b"",
-        }
-    )
+    request = _make_request("/search")
     with database.SessionLocal() as db:
         response = search(request=request, q="cliente", scope="all", layer="all", db=db)
 
     assert response.status_code == 200
     html = response.body.decode("utf-8")
-    assert "Resultados da busca" in html
+    assert "Total de resultados" in html
     assert "bronze.raw_cliente" in html
     assert "silver.dim_cliente" in html
     assert "gold.fato_pedido.cliente_sk" in html
@@ -83,15 +90,7 @@ def test_search_with_specific_layer_filters_results(tmp_path, monkeypatch) -> No
     _configure_test_db(tmp_path, monkeypatch)
     seed_metadata()
 
-    request = Request(
-        {
-            "type": "http",
-            "method": "GET",
-            "path": "/search",
-            "headers": [],
-            "query_string": b"",
-        }
-    )
+    request = _make_request("/search")
     with database.SessionLocal() as db:
         response = search(request=request, q="cliente", scope="all", layer="silver", db=db)
 
@@ -107,3 +106,18 @@ def test_search_with_specific_layer_filters_results(tmp_path, monkeypatch) -> No
     assert all(
         column.resolved_layer == "silver" for column in response.context["column_results"]
     )
+
+
+def test_table_detail_shows_columns(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+    seed_metadata()
+
+    request = _make_request("/table")
+    with database.SessionLocal() as db:
+        response = table_detail(request=request, schema="silver", table="dim_cliente", db=db)
+
+    assert response.status_code == 200
+    html = response.body.decode("utf-8")
+    assert "silver.dim_cliente" in html
+    assert "nome_cliente" in html
+    assert "Dimensão de clientes padronizada" in html

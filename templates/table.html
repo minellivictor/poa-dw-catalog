@@ -1,68 +1,47 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Detalhe da Tabela | POA DW Catalog</title>
-  <style>
-    :root {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: #111827;
-      background-color: #f3f4f6;
-    }
-    body {
-      margin: 0;
-      padding: 2rem 1rem;
-      display: grid;
-      place-items: start center;
-    }
-    main {
-      width: min(900px, 96vw);
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-      padding: 1.5rem;
-    }
-    .badge {
-      display: inline-block;
-      padding: 0.35em 0.65em;
-      font-size: 0.75em;
-      font-weight: 700;
-      line-height: 1;
-      text-align: center;
-      white-space: nowrap;
-      border-radius: 999px;
-      vertical-align: baseline;
-      margin-left: 0.35rem;
-    }
-    .bg-secondary {
-      background-color: #6c757d;
-      color: #fff;
-    }
-    .text-bg-warning {
-      background-color: #ffc107;
-      color: #000;
-    }
-    .text-bg-dark {
-      background-color: #212529;
-      color: #fff;
-    }
-    .bg-light {
-      background-color: #f8f9fa;
-    }
-    .text-dark {
-      color: #212529;
-    }
-  </style>
-</head>
-<body>
-  {% from "_layer_badge.html" import layer_badge %}
-  <main>
-    <h1>
-      {{ table.dw_schema }}.{{ table.dw_table }}
-      {{ layer_badge(table.resolved_layer if table.resolved_layer is defined else table.layer or table.dw_schema) }}
-    </h1>
-  </main>
-</body>
-</html>
+{% extends "_base.html" %}
+{% from "_layer_badge.html" import layer_badge %}
+
+{% block title %}Detalhe da Tabela | POA DW Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a class="btn btn-outline-secondary btn-sm" href="/search?q={{ table.dw_table | urlencode }}&layer=all&scope=all">Voltar para busca</a>
+</div>
+
+<section class="page-card p-3 p-md-4">
+  <header class="mb-4 d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+      <h2 class="h4 mb-1">{{ table.dw_schema }}.{{ table.dw_table }}</h2>
+      {% if table.table_comment %}
+        <p class="mb-0 text-secondary">{{ table.table_comment }}</p>
+      {% endif %}
+    </div>
+    {{ layer_badge(table.resolved_layer if table.resolved_layer is defined else table.layer or table.dw_schema) }}
+  </header>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col" style="width: 80px;">#</th>
+          <th scope="col">Coluna</th>
+          <th scope="col">Tipo</th>
+          <th scope="col">Nulo</th>
+          <th scope="col">Descrição</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for column in columns %}
+        <tr>
+          <td>{{ column.ordinal_position }}</td>
+          <td class="fw-semibold">{{ column.column_name }}</td>
+          <td><code>{{ column.data_type }}</code></td>
+          <td>{% if column.is_nullable %}Sim{% else %}Não{% endif %}</td>
+          <td class="text-secondary">{{ column.column_comment or "-" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

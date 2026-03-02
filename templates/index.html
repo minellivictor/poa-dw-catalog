@@ -1,75 +1,42 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POA DW Catalog</title>
-  <style>
-    :root {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: #1f2937;
-      background-color: #f3f4f6;
-    }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-    }
-    main {
-      width: min(680px, 92vw);
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 2rem;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-    }
-    h1 {
-      margin-top: 0;
-      margin-bottom: 1rem;
-      font-size: 2rem;
-    }
-    form {
-      display: grid;
-      gap: 0.75rem;
-    }
-    input[type="search"], select {
-      width: 100%;
-      padding: 0.8rem;
-      font-size: 1rem;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      background: #fff;
-    }
-    button {
-      justify-self: start;
-      padding: 0.65rem 1rem;
-      border: 0;
-      border-radius: 8px;
-      background: #111827;
-      color: #fff;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>POA DW Catalog</h1>
-    <form action="/search" method="get">
-      <input type="search" name="q" placeholder="Buscar tabela ou coluna" aria-label="Buscar tabela ou coluna" required>
-      <select name="layer" aria-label="Filtrar camada">
+{% extends "_base.html" %}
+
+{% block title %}Início | POA DW Catalog{% endblock %}
+
+{% block content %}
+<section class="page-card p-4 p-md-5 mx-auto" style="max-width: 820px;">
+  <div class="mb-4 text-center text-md-start">
+    <h2 class="hero-title fw-bold mb-2">Catálogo de Metadados do DW</h2>
+    <p class="text-secondary mb-0">Busque por tabelas e colunas nas camadas bronze, silver e gold.</p>
+  </div>
+
+  <form action="/search" method="get" class="row g-3 align-items-end">
+    <div class="col-12">
+      <label for="q" class="form-label fw-semibold">Buscar tabela ou coluna</label>
+      <input id="q" type="search" name="q" class="form-control form-control-lg search-input-lg" placeholder="Ex.: cliente, pedido, valor_total" aria-label="Buscar tabela ou coluna" required>
+    </div>
+
+    <div class="col-12 col-md-4">
+      <label for="layer" class="form-label">Camada</label>
+      <select id="layer" name="layer" class="form-select" aria-label="Filtrar camada">
         <option value="all" selected>Todas</option>
         <option value="bronze">bronze</option>
         <option value="silver">silver</option>
         <option value="gold">gold</option>
       </select>
-      <select name="scope" aria-label="Escopo">
+    </div>
+
+    <div class="col-12 col-md-4">
+      <label for="scope" class="form-label">Escopo</label>
+      <select id="scope" name="scope" class="form-select" aria-label="Escopo">
         <option value="all">Tudo</option>
         <option value="tables">Apenas tabelas</option>
         <option value="columns">Apenas colunas</option>
       </select>
-      <button type="submit">Buscar</button>
-    </form>
-  </main>
-</body>
-</html>
+    </div>
+
+    <div class="col-12 col-md-4 d-grid">
+      <button type="submit" class="btn btn-primary btn-lg">Buscar</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

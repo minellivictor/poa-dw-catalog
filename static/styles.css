@@ -1,0 +1,183 @@
+:root {
+  --bg-page: #eef2f6;
+  --bg-surface: #ffffff;
+  --border-color: #dbe3eb;
+  --text-main: #1b2a3a;
+  --text-muted: #617384;
+  --primary: #005ea6;
+  --primary-dark: #004b86;
+  --gray-soft: #f6f8fb;
+  --bronze: #b87333;
+  --silver: #6c7a89;
+  --gold: #b98a00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at top right, #f7fafc 0%, transparent 42%),
+    linear-gradient(180deg, #f4f7fb 0%, var(--bg-page) 100%);
+  padding-top: 76px;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 4px 18px rgba(10, 36, 66, 0.08);
+}
+
+.topbar-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  letter-spacing: 0.02em;
+}
+
+.brand-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: #fff;
+  padding: 0.2rem;
+}
+
+.page-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2rem 1rem 1.5rem;
+}
+
+.page-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(11, 36, 66, 0.08);
+}
+
+.page-footer {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 1rem;
+}
+
+.hero-title {
+  font-size: clamp(1.4rem, 2.8vw, 2rem);
+  color: var(--primary-dark);
+}
+
+.search-input-lg {
+  min-height: 3rem;
+  border-radius: 10px;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.layer-badge {
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  padding: 0.45rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.layer-bronze {
+  background-color: color-mix(in srgb, var(--bronze) 15%, #fff);
+  color: #6d3f14;
+  border: 1px solid color-mix(in srgb, var(--bronze) 35%, #fff);
+}
+
+.layer-silver {
+  background-color: color-mix(in srgb, var(--silver) 16%, #fff);
+  color: #334455;
+  border: 1px solid color-mix(in srgb, var(--silver) 35%, #fff);
+}
+
+.layer-gold {
+  background-color: color-mix(in srgb, var(--gold) 18%, #fff);
+  color: #6f5400;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, #fff);
+}
+
+.layer-unknown {
+  background-color: var(--gray-soft);
+  color: #485b6e;
+  border: 1px solid var(--border-color);
+}
+
+.result-card {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(11, 36, 66, 0.09);
+}
+
+.table thead th {
+  background-color: #f1f6fb;
+  color: #355068;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table tbody td {
+  vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-top: 86px;
+  }
+
+  .topbar-inner {
+    gap: 0.5rem;
+  }
+
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .brand-title {
+    font-size: 1rem;
+    text-align: center;
+  }
+}

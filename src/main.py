@@ -3,8 +3,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="POA DW Catalog", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
 def _resolve_table_layer(table: CatalogTable) -> str:
@@ -118,4 +120,29 @@ def search(
         request=request,
         name="search.html",
         context=context,
+    )
+
+
+@app.get("/table", response_class=HTMLResponse)
+def table_detail(
+    request: Request,
+    schema: str = Query(..., min_length=1),
+    table: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    catalog_table = (
+        db.query(CatalogTable)
+        .filter(CatalogTable.dw_schema == schema, CatalogTable.dw_table == table)
+        .one_or_none()
+    )
+    if catalog_table is None:
+        raise HTTPException(status_code=404, detail="Tabela não encontrada")
+
+    catalog_table.resolved_layer = _resolve_table_layer(catalog_table)
+    columns = sorted(catalog_table.columns, key=lambda column: column.ordinal_position)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="table.html",
+        context={"table": catalog_table, "columns": columns},
     )
