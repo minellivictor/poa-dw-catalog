@@ -47,47 +47,197 @@ def _annotate_result_layers(
 
 
 def _build_mock_results() -> tuple[list[SimpleNamespace], list[SimpleNamespace]]:
-    table_bronze = SimpleNamespace(
+    table_nfse_raw = SimpleNamespace(
         dw_schema="bronze",
-        dw_table="raw_pedidos",
+        dw_table="nfse_raw",
         layer="bronze",
-        table_comment="Carga bruta de pedidos vindos do ERP",
+        table_comment="Documentos de NFS-e recebidos dos provedores municipais",
     )
-    table_silver = SimpleNamespace(
+    table_divida_ativa_raw = SimpleNamespace(
+        dw_schema="bronze",
+        dw_table="divida_ativa_raw",
+        layer="bronze",
+        table_comment="Extrato bruto das inscricoes em divida ativa",
+    )
+    table_ods_cadastro_contribuinte = SimpleNamespace(
         dw_schema="silver",
-        dw_table="dim_cliente",
+        dw_table="ods_cadastro_contribuinte",
         layer="silver",
-        table_comment="Dimensão de clientes padronizada",
+        table_comment="Cadastro padronizado de contribuintes municipais",
     )
-    table_gold = SimpleNamespace(
+    table_ods_divida_ativa = SimpleNamespace(
+        dw_schema="silver",
+        dw_table="ods_divida_ativa",
+        layer="silver",
+        table_comment="Situacao consolidada de titulos em divida ativa",
+    )
+    table_ods_lancamentos_tributarios = SimpleNamespace(
+        dw_schema="silver",
+        dw_table="ods_lancamentos_tributarios",
+        layer="silver",
+        table_comment="Lancamentos tributarios com base de calculo e vencimento",
+    )
+    table_fato_arrecadacao_iss_mensal = SimpleNamespace(
         dw_schema="gold",
-        dw_table="fato_vendas_diaria",
+        dw_table="fato_arrecadacao_iss_mensal",
         layer="gold",
-        table_comment="Fato agregado diário para indicadores de vendas",
+        table_comment="Fato mensal de arrecadacao de ISS por contribuinte",
     )
-    table_results = [table_bronze, table_silver, table_gold]
+    table_fato_recuperacao_divida_ativa = SimpleNamespace(
+        dw_schema="gold",
+        dw_table="fato_recuperacao_divida_ativa",
+        layer="gold",
+        table_comment="Indicadores mensais de recuperacao da divida ativa",
+    )
+    table_results = [
+        table_nfse_raw,
+        table_divida_ativa_raw,
+        table_ods_cadastro_contribuinte,
+        table_ods_divida_ativa,
+        table_ods_lancamentos_tributarios,
+        table_fato_arrecadacao_iss_mensal,
+        table_fato_recuperacao_divida_ativa,
+    ]
 
     column_results = [
         SimpleNamespace(
-            table=table_bronze,
-            column_name="pedido_id",
-            data_type="INTEGER",
-            column_comment="Identificador bruto do pedido na origem",
-        ),
-        SimpleNamespace(
-            table=table_silver,
-            column_name="cliente_nome",
+            table=table_nfse_raw,
+            column_name="inscricao_municipal",
             data_type="TEXT",
-            column_comment="Nome do cliente após padronização",
+            column_comment="Inscricao municipal informada no documento NFS-e",
         ),
         SimpleNamespace(
-            table=table_gold,
-            column_name="valor_total_dia",
+            table=table_nfse_raw,
+            column_name="codigo_servico",
+            data_type="TEXT",
+            column_comment="Codigo do servico conforme lista tributavel",
+        ),
+        SimpleNamespace(
+            table=table_nfse_raw,
+            column_name="competencia",
+            data_type="DATE",
+            column_comment="Competencia da emissao da NFS-e",
+        ),
+        SimpleNamespace(
+            table=table_ods_cadastro_contribuinte,
+            column_name="cnpj_cpf",
+            data_type="TEXT",
+            column_comment="Documento principal do contribuinte",
+        ),
+        SimpleNamespace(
+            table=table_ods_cadastro_contribuinte,
+            column_name="razao_social",
+            data_type="TEXT",
+            column_comment="Razao social normalizada do contribuinte",
+        ),
+        SimpleNamespace(
+            table=table_ods_lancamentos_tributarios,
+            column_name="valor_iss",
+            data_type="NUMERIC(14,2)",
+            column_comment="Valor de ISS calculado no lancamento tributario",
+        ),
+        SimpleNamespace(
+            table=table_ods_lancamentos_tributarios,
+            column_name="data_vencimento",
+            data_type="DATE",
+            column_comment="Data de vencimento do lancamento",
+        ),
+        SimpleNamespace(
+            table=table_ods_divida_ativa,
+            column_name="valor_principal",
+            data_type="NUMERIC(14,2)",
+            column_comment="Valor principal inscrito em divida ativa",
+        ),
+        SimpleNamespace(
+            table=table_ods_divida_ativa,
+            column_name="valor_multa",
+            data_type="NUMERIC(14,2)",
+            column_comment="Valor de multa aplicado na inscricao",
+        ),
+        SimpleNamespace(
+            table=table_ods_divida_ativa,
+            column_name="valor_juros",
+            data_type="NUMERIC(14,2)",
+            column_comment="Valor de juros acumulado da divida",
+        ),
+        SimpleNamespace(
+            table=table_ods_divida_ativa,
+            column_name="data_inscricao",
+            data_type="DATE",
+            column_comment="Data de inscricao da divida ativa",
+        ),
+        SimpleNamespace(
+            table=table_ods_divida_ativa,
+            column_name="situacao",
+            data_type="TEXT",
+            column_comment="Situacao administrativa da cobranca",
+        ),
+        SimpleNamespace(
+            table=table_fato_recuperacao_divida_ativa,
+            column_name="canal_cobranca",
+            data_type="TEXT",
+            column_comment="Canal de cobranca utilizado na recuperacao",
+        ),
+        SimpleNamespace(
+            table=table_fato_recuperacao_divida_ativa,
+            column_name="parcelamento_ativo",
+            data_type="BOOLEAN",
+            column_comment="Indica se a divida esta em parcelamento ativo",
+        ),
+        SimpleNamespace(
+            table=table_fato_arrecadacao_iss_mensal,
+            column_name="valor_arrecadado_iss",
             data_type="NUMERIC",
-            column_comment="Soma diária dos valores de venda",
+            column_comment="Total mensal de ISS arrecadado",
         ),
     ]
     return table_results, column_results
+
+
+def _match_mock_query(values: list[str], query: str) -> bool:
+    normalized_query = query.lower()
+    return any(normalized_query in value.lower() for value in values if value)
+
+
+def _filter_mock_results(
+    query: str,
+    scope: Literal["all", "tables", "columns"],
+    table_results: list[SimpleNamespace],
+    column_results: list[SimpleNamespace],
+) -> tuple[list[SimpleNamespace], list[SimpleNamespace]]:
+    filtered_tables = table_results
+    filtered_columns = column_results
+
+    if query:
+        filtered_tables = [
+            table
+            for table in table_results
+            if _match_mock_query(
+                [table.dw_schema, table.dw_table, table.table_comment],
+                query,
+            )
+        ]
+        filtered_columns = [
+            column
+            for column in column_results
+            if _match_mock_query(
+                [
+                    column.column_name,
+                    column.column_comment,
+                    column.data_type,
+                    column.table.dw_schema,
+                    column.table.dw_table,
+                    column.table.table_comment,
+                ],
+                query,
+            )
+        ]
+
+    if scope == "tables":
+        return filtered_tables, []
+    if scope == "columns":
+        return [], filtered_columns
+    return filtered_tables, filtered_columns
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -104,10 +254,10 @@ def search(
         Query(),
     ] = "all",
     scope: Annotated[Literal["all", "tables", "columns"], Query()] = "all",
-    mock: Annotated[Literal[0, 1], Query()] = 0,
+    mock: bool = False,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    is_mock = mock == 1
+    is_mock = mock
     query = q.strip()
     effective_layer = layer if layer in {"bronze", "silver", "gold"} else None
     selected_layer = effective_layer or "all"
@@ -116,8 +266,12 @@ def search(
 
     if is_mock:
         mock_tables, mock_columns = _build_mock_results()
-        table_results = mock_tables
-        column_results = mock_columns
+        table_results, column_results = _filter_mock_results(
+            query=query,
+            scope=scope,
+            table_results=mock_tables,
+            column_results=mock_columns,
+        )
     elif query:
         if scope in {"all", "tables"}:
             table_query = db.query(CatalogTable)

@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 
+from pydantic import TypeAdapter
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
 from starlette.requests import Request
@@ -113,14 +114,67 @@ def test_search_mock_mode_returns_demo_banner(tmp_path, monkeypatch) -> None:
 
     request = _make_request("/search")
     with database.SessionLocal() as db:
-        response = search(request=request, q="", scope="all", layer="all", mock=1, db=db)
+        response = search(request=request, q="", scope="all", layer="all", mock=True, db=db)
 
     assert response.status_code == 200
     html = response.body.decode("utf-8")
     assert "Modo DEMO (dados simulados)" in html
-    assert "bronze.raw_pedidos" in html
-    assert "silver.dim_cliente" in html
-    assert "gold.fato_vendas_diaria" in html
+    assert "bronze.nfse_raw" in html
+    assert "silver.ods_cadastro_contribuinte" in html
+    assert len(response.context["table_results"]) >= 1
+
+
+def test_search_mock_mode_keywords_return_results(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+
+    request = _make_request("/search")
+    with database.SessionLocal() as db:
+        contribuinte_response = search(
+            request=request,
+            q="contribuinte",
+            scope="all",
+            layer="all",
+            mock=True,
+            db=db,
+        )
+        divida_response = search(
+            request=request,
+            q="divida",
+            scope="all",
+            layer="all",
+            mock=True,
+            db=db,
+        )
+        lancamento_response = search(
+            request=request,
+            q="lancamento",
+            scope="all",
+            layer="all",
+            mock=True,
+            db=db,
+        )
+
+    assert len(contribuinte_response.context["table_results"]) >= 1
+    assert len(contribuinte_response.context["column_results"]) >= 1
+    assert (
+        len(divida_response.context["table_results"])
+        + len(divida_response.context["column_results"])
+        >= 1
+    )
+    assert (
+        len(lancamento_response.context["table_results"])
+        + len(lancamento_response.context["column_results"])
+        >= 1
+    )
+
+
+def test_mock_query_values_are_coerced_to_boolean() -> None:
+    parser = TypeAdapter(bool)
+
+    assert parser.validate_python("true") is True
+    assert parser.validate_python("1") is True
+    assert parser.validate_python("false") is False
+    assert parser.validate_python("0") is False
 
 
 def test_table_detail_shows_columns(tmp_path, monkeypatch) -> None:
