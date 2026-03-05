@@ -10,7 +10,13 @@
 </div>
 
 <section class="page-card p-3 p-md-4 mb-4">
+  {% if is_mock %}
+  <div class="alert alert-warning py-2 px-3 small mb-3" role="status">Modo DEMO (dados simulados)</div>
+  {% endif %}
   <form action="/search" method="get" class="row g-2 g-md-3 align-items-end">
+    {% if is_mock %}
+    <input type="hidden" name="mock" value="1">
+    {% endif %}
     <div class="col-12 col-lg-6">
       <label for="q" class="form-label">Termo</label>
       <input id="q" type="search" name="q" value="{{ query }}" class="form-control" placeholder="Buscar tabela ou coluna" aria-label="Buscar tabela ou coluna" required>

@@ -10,9 +10,13 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <img src="{{ url_for('static', path='img/prefeitura.png') }}" alt="Logo Prefeitura" class="brand-logo">
-      <h1 class="brand-title">POA DW Catalog</h1>
-      <img src="{{ url_for('static', path='img/aquila.png') }}" alt="Logo Aquila" class="brand-logo">
+      <div class="brand-group">
+        <div class="brand-logos">
+          <img src="{{ url_for('static', path='img/prefeitura.png') }}" alt="Logo Prefeitura" class="navbar-logo">
+          <img src="{{ url_for('static', path='img/aquila.png') }}" alt="Logo Aquila" class="navbar-logo">
+        </div>
+        <h1 class="brand-title">POA DW Catalog</h1>
+      </div>
     </div>
   </header>
 

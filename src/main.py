@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -45,6 +46,50 @@ def _annotate_result_layers(
         column.resolved_layer = resolved_layer
 
 
+def _build_mock_results() -> tuple[list[SimpleNamespace], list[SimpleNamespace]]:
+    table_bronze = SimpleNamespace(
+        dw_schema="bronze",
+        dw_table="raw_pedidos",
+        layer="bronze",
+        table_comment="Carga bruta de pedidos vindos do ERP",
+    )
+    table_silver = SimpleNamespace(
+        dw_schema="silver",
+        dw_table="dim_cliente",
+        layer="silver",
+        table_comment="Dimensão de clientes padronizada",
+    )
+    table_gold = SimpleNamespace(
+        dw_schema="gold",
+        dw_table="fato_vendas_diaria",
+        layer="gold",
+        table_comment="Fato agregado diário para indicadores de vendas",
+    )
+    table_results = [table_bronze, table_silver, table_gold]
+
+    column_results = [
+        SimpleNamespace(
+            table=table_bronze,
+            column_name="pedido_id",
+            data_type="INTEGER",
+            column_comment="Identificador bruto do pedido na origem",
+        ),
+        SimpleNamespace(
+            table=table_silver,
+            column_name="cliente_nome",
+            data_type="TEXT",
+            column_comment="Nome do cliente após padronização",
+        ),
+        SimpleNamespace(
+            table=table_gold,
+            column_name="valor_total_dia",
+            data_type="NUMERIC",
+            column_comment="Soma diária dos valores de venda",
+        ),
+    ]
+    return table_results, column_results
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request=request, name="index.html", context={})
@@ -59,15 +104,21 @@ def search(
         Query(),
     ] = "all",
     scope: Annotated[Literal["all", "tables", "columns"], Query()] = "all",
+    mock: Annotated[Literal[0, 1], Query()] = 0,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
+    is_mock = mock == 1
     query = q.strip()
     effective_layer = layer if layer in {"bronze", "silver", "gold"} else None
     selected_layer = effective_layer or "all"
     table_results: list[CatalogTable] = []
     column_results: list[CatalogColumn] = []
 
-    if query:
+    if is_mock:
+        mock_tables, mock_columns = _build_mock_results()
+        table_results = mock_tables
+        column_results = mock_columns
+    elif query:
         if scope in {"all", "tables"}:
             table_query = db.query(CatalogTable)
             if effective_layer:
@@ -107,11 +158,15 @@ def search(
             )
 
     _annotate_result_layers(table_results, column_results)
+    if effective_layer:
+        table_results = [t for t in table_results if t.resolved_layer == effective_layer]
+        column_results = [c for c in column_results if c.resolved_layer == effective_layer]
 
     context = {
         "query": query,
         "layer": selected_layer,
         "scope": scope,
+        "is_mock": is_mock,
         "table_results": table_results,
         "column_results": column_results,
         "result_count": len(table_results) + len(column_results),

@@ -108,6 +108,21 @@ def test_search_with_specific_layer_filters_results(tmp_path, monkeypatch) -> No
     )
 
 
+def test_search_mock_mode_returns_demo_banner(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+
+    request = _make_request("/search")
+    with database.SessionLocal() as db:
+        response = search(request=request, q="", scope="all", layer="all", mock=1, db=db)
+
+    assert response.status_code == 200
+    html = response.body.decode("utf-8")
+    assert "Modo DEMO (dados simulados)" in html
+    assert "bronze.raw_pedidos" in html
+    assert "silver.dim_cliente" in html
+    assert "gold.fato_vendas_diaria" in html
+
+
 def test_table_detail_shows_columns(tmp_path, monkeypatch) -> None:
     _configure_test_db(tmp_path, monkeypatch)
     seed_metadata()
