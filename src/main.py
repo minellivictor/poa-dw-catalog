@@ -1,18 +1,20 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Annotated, Literal
+from urllib.parse import parse_qs
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from src.database import get_db, init_db
-from src.models import CatalogColumn, CatalogTable
+from src.models import CatalogColumn, CatalogTable, HistoricoCuradoria
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -44,6 +46,60 @@ def _annotate_result_layers(
         resolved_layer = _resolve_table_layer(column.table)
         column.table.resolved_layer = resolved_layer
         column.resolved_layer = resolved_layer
+
+
+def _buscar_historico(
+    db: Session,
+    tipo_entidade: Literal["tabela", "coluna"],
+    entidade_id: int,
+) -> list[HistoricoCuradoria]:
+    return (
+        db.query(HistoricoCuradoria)
+        .filter(
+            HistoricoCuradoria.tipo_entidade == tipo_entidade,
+            HistoricoCuradoria.entidade_id == entidade_id,
+            HistoricoCuradoria.campo_alterado == "descricao_negocio",
+        )
+        .order_by(HistoricoCuradoria.data_alteracao.desc(), HistoricoCuradoria.id.desc())
+        .all()
+    )
+
+
+def _registrar_curadoria(
+    db: Session,
+    *,
+    tipo_entidade: Literal["tabela", "coluna"],
+    entidade_id: int,
+    valor_anterior: str | None,
+    valor_novo: str | None,
+    usuario: str,
+) -> None:
+    db.add(
+        HistoricoCuradoria(
+            tipo_entidade=tipo_entidade,
+            entidade_id=entidade_id,
+            campo_alterado="descricao_negocio",
+            valor_anterior=valor_anterior,
+            valor_novo=valor_novo,
+            usuario=usuario,
+            data_alteracao=datetime.now(UTC),
+        )
+    )
+
+
+def _normalizar_texto_curadoria(valor: str) -> str | None:
+    texto = valor.strip()
+    return texto or None
+
+
+async def _ler_formulario_curadoria(request: Request) -> tuple[str, str]:
+    corpo = (await request.body()).decode("utf-8")
+    payload = parse_qs(corpo, keep_blank_values=True)
+    descricao_negocio = payload.get("descricao_negocio", [""])[0]
+    usuario = payload.get("usuario", [""])[0].strip()
+    if not usuario:
+        raise HTTPException(status_code=400, detail="Usuário é obrigatório")
+    return descricao_negocio, usuario
 
 
 def _build_mock_results() -> tuple[list[SimpleNamespace], list[SimpleNamespace]]:
@@ -337,6 +393,7 @@ def table_detail(
     request: Request,
     schema: str = Query(..., min_length=1),
     table: str = Query(..., min_length=1),
+    mensagem: str = Query("", min_length=0),
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     catalog_table = (
@@ -349,9 +406,125 @@ def table_detail(
 
     catalog_table.resolved_layer = _resolve_table_layer(catalog_table)
     columns = sorted(catalog_table.columns, key=lambda column: column.ordinal_position)
+    historico = _buscar_historico(db, "tabela", catalog_table.id)
 
     return templates.TemplateResponse(
         request=request,
         name="table.html",
-        context={"table": catalog_table, "columns": columns},
+        context={
+            "table": catalog_table,
+            "columns": columns,
+            "historico": historico,
+            "mensagem": mensagem,
+        },
     )
+
+
+@app.get("/column", response_class=HTMLResponse)
+def column_detail(
+    request: Request,
+    schema: str = Query(..., min_length=1),
+    table: str = Query(..., min_length=1),
+    column: str = Query(..., min_length=1),
+    mensagem: str = Query("", min_length=0),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    catalog_column = (
+        db.query(CatalogColumn)
+        .join(CatalogTable)
+        .filter(
+            CatalogTable.dw_schema == schema,
+            CatalogTable.dw_table == table,
+            CatalogColumn.column_name == column,
+        )
+        .one_or_none()
+    )
+    if catalog_column is None:
+        raise HTTPException(status_code=404, detail="Coluna não encontrada")
+
+    catalog_column.table.resolved_layer = _resolve_table_layer(catalog_column.table)
+    historico = _buscar_historico(db, "coluna", catalog_column.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="column.html",
+        context={
+            "column": catalog_column,
+            "historico": historico,
+            "mensagem": mensagem,
+        },
+    )
+
+
+@app.post("/table/{table_id}/descricao-negocio")
+async def atualizar_descricao_negocio_tabela(
+    table_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    catalog_table = (
+        db.query(CatalogTable).filter(CatalogTable.id == table_id).one_or_none()
+    )
+    if catalog_table is None:
+        raise HTTPException(status_code=404, detail="Tabela não encontrada")
+
+    descricao_negocio, usuario_normalizado = await _ler_formulario_curadoria(request)
+
+    valor_anterior = catalog_table.descricao_negocio
+    valor_novo = _normalizar_texto_curadoria(descricao_negocio)
+    if valor_anterior != valor_novo:
+        catalog_table.descricao_negocio = valor_novo
+        _registrar_curadoria(
+            db,
+            tipo_entidade="tabela",
+            entidade_id=catalog_table.id,
+            valor_anterior=valor_anterior,
+            valor_novo=valor_novo,
+            usuario=usuario_normalizado,
+        )
+        db.commit()
+
+    redirect_url = app.url_path_for("table_detail")
+    redirect_url += (
+        f"?schema={catalog_table.dw_schema}&table={catalog_table.dw_table}"
+        "&mensagem=Descricao+de+negocio+da+tabela+atualizada"
+    )
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+
+@app.post("/column/{column_id}/descricao-negocio")
+async def atualizar_descricao_negocio_coluna(
+    column_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    catalog_column = (
+        db.query(CatalogColumn).filter(CatalogColumn.id == column_id).one_or_none()
+    )
+    if catalog_column is None:
+        raise HTTPException(status_code=404, detail="Coluna não encontrada")
+
+    descricao_negocio, usuario_normalizado = await _ler_formulario_curadoria(request)
+
+    valor_anterior = catalog_column.descricao_negocio
+    valor_novo = _normalizar_texto_curadoria(descricao_negocio)
+    if valor_anterior != valor_novo:
+        catalog_column.descricao_negocio = valor_novo
+        _registrar_curadoria(
+            db,
+            tipo_entidade="coluna",
+            entidade_id=catalog_column.id,
+            valor_anterior=valor_anterior,
+            valor_novo=valor_novo,
+            usuario=usuario_normalizado,
+        )
+        db.commit()
+
+    redirect_url = app.url_path_for("column_detail")
+    redirect_url += (
+        f"?schema={catalog_column.table.dw_schema}"
+        f"&table={catalog_column.table.dw_table}"
+        f"&column={catalog_column.column_name}"
+        "&mensagem=Descricao+de+negocio+da+coluna+atualizada"
+    )
+    return RedirectResponse(url=redirect_url, status_code=303)

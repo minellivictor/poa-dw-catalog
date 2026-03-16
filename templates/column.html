@@ -1,0 +1,82 @@
+{% extends "_base.html" %}
+{% from "_layer_badge.html" import layer_badge %}
+
+{% block title %}Detalhe da Coluna | POA DW Catalog{% endblock %}
+
+{% block content %}
+<div class="mb-3 d-flex gap-2 flex-wrap">
+  <a class="btn btn-outline-secondary btn-sm" href="/table?schema={{ column.table.dw_schema | urlencode }}&table={{ column.table.dw_table | urlencode }}">Voltar para tabela</a>
+  <a class="btn btn-outline-secondary btn-sm" href="/search?q={{ column.column_name | urlencode }}&layer=all&scope=columns">Voltar para busca</a>
+</div>
+
+<section class="page-card p-3 p-md-4">
+  {% if mensagem %}
+    <div class="alert alert-success py-2 px-3 small" role="status">{{ mensagem }}</div>
+  {% endif %}
+  <header class="mb-4 d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+      <h2 class="h4 mb-1">{{ column.table.dw_schema }}.{{ column.table.dw_table }}.{{ column.column_name }}</h2>
+      <p class="mb-0 text-secondary">Tipo: <code>{{ column.data_type }}</code> | Nulo: {% if column.is_nullable %}Sim{% else %}Não{% endif %}</p>
+    </div>
+    {{ layer_badge(column.table.resolved_layer if column.table.resolved_layer is defined else column.table.layer or column.table.dw_schema) }}
+  </header>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-6">
+      <div class="metadata-card h-100">
+        <span class="metadata-label">Descrição Técnica</span>
+        <p class="mb-0 text-secondary">{{ column.column_comment or "-" }}</p>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="metadata-card h-100">
+        <span class="metadata-label">Descrição de Negócio</span>
+        <p class="mb-3">{{ column.descricao_negocio or "Nenhuma descrição de negócio cadastrada." }}</p>
+        <details open>
+          <summary class="btn btn-outline-primary btn-sm">Editar descrição</summary>
+          <form action="/column/{{ column.id }}/descricao-negocio" method="post" class="mt-3">
+            <label for="descricao-negocio-coluna" class="form-label">Descrição de Negócio</label>
+            <textarea id="descricao-negocio-coluna" name="descricao_negocio" class="form-control" rows="4" placeholder="Descreva o significado de negócio desta coluna">{{ column.descricao_negocio or "" }}</textarea>
+            <label for="usuario-coluna" class="form-label mt-3">Usuário</label>
+            <input id="usuario-coluna" name="usuario" class="form-control" value="catalogo_web" required>
+            <button type="submit" class="btn btn-primary btn-sm mt-3">Salvar descrição</button>
+          </form>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page-card p-3 p-md-4 mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="h5 mb-0">Histórico de alterações</h3>
+    <span class="text-secondary small">{{ historico|length }} registro(s)</span>
+  </div>
+  {% if historico %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Usuário</th>
+            <th scope="col">Data</th>
+            <th scope="col">Valor anterior</th>
+            <th scope="col">Valor novo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in historico %}
+          <tr>
+            <td>{{ item.usuario }}</td>
+            <td>{{ item.data_alteracao.strftime("%d/%m/%Y %H:%M") }}</td>
+            <td class="text-secondary">{{ item.valor_anterior or "-" }}</td>
+            <td>{{ item.valor_novo or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="mb-0 text-secondary fst-italic">Nenhuma alteração registrada para esta coluna.</p>
+  {% endif %}
+</section>
+{% endblock %}

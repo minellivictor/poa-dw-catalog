@@ -76,7 +76,7 @@
         <article class="result-card p-3">
           <div class="d-flex justify-content-between align-items-start gap-2">
             <div>
-              <div class="fw-semibold">{{ column.table.dw_schema }}.{{ column.table.dw_table }}.{{ column.column_name }}</div>
+              <a class="fw-semibold text-decoration-none" href="/column?schema={{ column.table.dw_schema | urlencode }}&table={{ column.table.dw_table | urlencode }}&column={{ column.column_name | urlencode }}">{{ column.table.dw_schema }}.{{ column.table.dw_table }}.{{ column.column_name }}</a>
               <div class="small text-secondary">{{ column.data_type }}{% if column.column_comment %} | {{ column.column_comment }}{% endif %}</div>
             </div>
             {{ layer_badge(column.resolved_layer) }}

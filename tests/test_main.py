@@ -1,5 +1,7 @@
 from pathlib import Path
 import sys
+from urllib.parse import urlencode
+import asyncio
 
 from pydantic import TypeAdapter
 from sqlalchemy import create_engine, inspect
@@ -9,7 +11,15 @@ from starlette.requests import Request
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import src.database as database
-from src.main import app, search, table_detail
+from src.main import (
+    app,
+    atualizar_descricao_negocio_coluna,
+    atualizar_descricao_negocio_tabela,
+    column_detail,
+    search,
+    table_detail,
+)
+from src.models import CatalogColumn, CatalogTable, HistoricoCuradoria
 from src.seed import seed_metadata
 
 
@@ -24,6 +34,26 @@ def _make_request(path: str) -> Request:
             "router": app.router,
             "app": app,
         }
+    )
+
+
+def _make_post_request(path: str, data: dict[str, str]) -> Request:
+    body = urlencode(data).encode("utf-8")
+
+    async def receive() -> dict[str, object]:
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": path,
+            "headers": [(b"content-type", b"application/x-www-form-urlencoded")],
+            "query_string": b"",
+            "router": app.router,
+            "app": app,
+        },
+        receive=receive,
     )
 
 
@@ -48,6 +78,7 @@ def test_index_route_registered() -> None:
     assert "/" in paths
     assert "/search" in paths
     assert "/table" in paths
+    assert "/column" in paths
 
 
 def test_init_db_creates_catalog_file(tmp_path, monkeypatch) -> None:
@@ -65,6 +96,13 @@ def test_init_db_creates_catalog_table(tmp_path, monkeypatch) -> None:
     inspector = inspect(test_engine)
 
     assert "catalog_table" in inspector.get_table_names()
+    assert "historico_curadoria" in inspector.get_table_names()
+    assert {
+        column["name"] for column in inspector.get_columns("catalog_table")
+    } >= {"descricao_negocio"}
+    assert {
+        column["name"] for column in inspector.get_columns("catalog_column")
+    } >= {"descricao_negocio"}
 
 
 def test_search_with_layer_all_returns_multiple_layers(tmp_path, monkeypatch) -> None:
@@ -190,3 +228,127 @@ def test_table_detail_shows_columns(tmp_path, monkeypatch) -> None:
     assert "silver.dim_cliente" in html
     assert "nome_cliente" in html
     assert "Dimensão de clientes padronizada" in html
+    assert "Descrição de Negócio" in html
+
+
+def test_update_table_business_description_creates_history(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+    seed_metadata()
+
+    with database.SessionLocal() as db:
+        tabela = (
+            db.query(CatalogTable)
+            .filter(
+                CatalogTable.dw_schema == "silver",
+                CatalogTable.dw_table == "dim_cliente",
+            )
+            .one()
+        )
+        table_id = tabela.id
+
+    with database.SessionLocal() as db:
+        response = asyncio.run(
+            atualizar_descricao_negocio_tabela(
+                table_id=table_id,
+                request=_make_post_request(
+                    f"/table/{table_id}/descricao-negocio",
+                    {
+                        "descricao_negocio": "Tabela usada como dimensão mestre de clientes",
+                        "usuario": "analista_dw",
+                    },
+                ),
+                db=db,
+            )
+        )
+
+    assert response.status_code == 303
+    assert "mensagem=Descricao+de+negocio+da+tabela+atualizada" in response.headers["location"]
+
+    with database.SessionLocal() as db:
+        catalog_table = db.query(CatalogTable).filter(CatalogTable.id == table_id).one()
+        historico = db.query(HistoricoCuradoria).filter_by(
+            tipo_entidade="tabela",
+            entidade_id=table_id,
+        ).one()
+
+    assert catalog_table.descricao_negocio == "Tabela usada como dimensão mestre de clientes"
+    assert historico.valor_anterior is None
+    assert historico.valor_novo == "Tabela usada como dimensão mestre de clientes"
+    assert historico.usuario == "analista_dw"
+
+    request = _make_request("/table")
+    with database.SessionLocal() as db:
+        detail_response = table_detail(
+            request=request,
+            schema="silver",
+            table="dim_cliente",
+            mensagem="Descrição atualizada",
+            db=db,
+        )
+
+    assert "Tabela usada como dimensão mestre de clientes" in detail_response.body.decode("utf-8")
+    assert "analista_dw" in detail_response.body.decode("utf-8")
+
+
+def test_update_column_business_description_creates_history(tmp_path, monkeypatch) -> None:
+    _configure_test_db(tmp_path, monkeypatch)
+    seed_metadata()
+
+    with database.SessionLocal() as db:
+        coluna = (
+            db.query(CatalogColumn)
+            .join(CatalogTable)
+            .filter(
+                CatalogTable.dw_schema == "silver",
+                CatalogTable.dw_table == "dim_cliente",
+                CatalogColumn.column_name == "nome_cliente",
+            )
+            .one()
+        )
+        coluna_id = coluna.id
+
+    with database.SessionLocal() as db:
+        response = asyncio.run(
+            atualizar_descricao_negocio_coluna(
+                column_id=coluna_id,
+                request=_make_post_request(
+                    f"/column/{coluna_id}/descricao-negocio",
+                    {
+                        "descricao_negocio": "Nome principal exibido nos relatórios de clientes",
+                        "usuario": "governanca_dados",
+                    },
+                ),
+                db=db,
+            )
+        )
+
+    assert response.status_code == 303
+    assert "mensagem=Descricao+de+negocio+da+coluna+atualizada" in response.headers["location"]
+
+    with database.SessionLocal() as db:
+        coluna = db.query(CatalogColumn).filter(CatalogColumn.id == coluna_id).one()
+        historico = db.query(HistoricoCuradoria).filter_by(
+            tipo_entidade="coluna",
+            entidade_id=coluna_id,
+        ).one()
+
+    assert coluna.descricao_negocio == "Nome principal exibido nos relatórios de clientes"
+    assert historico.valor_anterior is None
+    assert historico.valor_novo == "Nome principal exibido nos relatórios de clientes"
+    assert historico.usuario == "governanca_dados"
+
+    request = _make_request("/column")
+    with database.SessionLocal() as db:
+        detail_response = column_detail(
+            request=request,
+            schema="silver",
+            table="dim_cliente",
+            column="nome_cliente",
+            mensagem="Descrição atualizada",
+            db=db,
+        )
+
+    assert "Nome principal exibido nos relatórios de clientes" in detail_response.body.decode(
+        "utf-8"
+    )
+    assert "governanca_dados" in detail_response.body.decode("utf-8")

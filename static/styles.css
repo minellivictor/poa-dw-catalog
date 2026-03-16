@@ -164,6 +164,36 @@ body {
   box-shadow: 0 8px 18px rgba(11, 36, 66, 0.09);
 }
 
+.metadata-panel {
+  border-top: 1px solid var(--border-color);
+  padding-top: 1.25rem;
+}
+
+.metadata-card {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: #fbfdff;
+  padding: 1rem;
+}
+
+.metadata-label {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #355068;
+}
+
+details summary {
+  list-style: none;
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
 .table thead th {
   background-color: #f1f6fb;
   color: #355068;
